@@ -1,5 +1,7 @@
 
-.PHONY: push_github
+.PHONY: push2all push2github push2bitbucket 
+
+push2all: push2github push2bitbucket
 
 push2github:
 	git push -u git@github.com:moikawa/bin.git master
