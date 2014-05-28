@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Define Variables
+cmdbase=${0##*/} # ex.) "run_dscudad"
+hostlist=()
+argc=$#
+argv=()
+login_id=$(whoami)
+tmpfile=./tmpfile
+#=======================================
+# Init_HostAvail()
+#---------------------------------------
+Init_HostAvail() {
+    for i in ds{01..16}; do 
+	hostlist=("${hostlist[@]}" ${i})
+    done
+#    for i in titan{01..08}; do
+#	hostlist=("${hostlist[@]}" ${i})
+#    done
+    return 0
+}
+#=======================================
+# Print_HostAvail()
+#---------------------------------------
+Print_HostAvail() {
+    for ((i=0; i<${#hostlist[@]}; ++i));do
+	printf "%s\n" ${hostlist[i]}
+    done
+}
+#========================================
+# Usage()
+#---------------------------------------
+Usage() {
+    printf "Usage:\n"
+    printf "> %s\n " $cmdbase
+}
+#========================================
+# Check_args()
+#---------------------------------------
+Check_args() {
+    argc_exp=0
+    if [ $argc -ne $argc_exp ]; then
+	Usage
+	exit 1
+    fi
+}
+#
+# main() 
+#
+Check_args;
+Init_HostAvail;
+
+for i in ${hostlist[@]}; do
+    echo "--- ${i} ---"
+#     ssh -n ${i} "pgrep -l dscudad | grep -v kill_dscudad | awk '{ print $1 }'" # | kill -9
+    ssh $i "ps aux | grep dscudad | grep -v -e grep -e emacs -e tee -e ${cmdbase}" | tee ${tmpfile}
+    if [ -s ${tmpfile} ]; then
+	userid=$(awk '{print $1}' ${tmpfile})
+	procid=$(awk '{print $2}' ${tmpfile})
+#	echo $userid, $procid
+	if [ ${userid} = ${login_id} ]; then
+	    printf "(to be killed)\n"
+	    ssh $i "kill -9 ${procid}"
+	fi
+    fi
+ #    ssh -n ${i} "pkill dscudad"
+done
+
+

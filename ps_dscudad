@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Define Variables
+cmdbase=${0##*/} # ex.) "run_dscudad"
+hostlist=()
+argc=$#
+argv=()
+tmpfile=./ps_dscudad.tmp
+#=======================================
+# Init_HostAvail()
+#---------------------------------------
+Init_HostAvail() {
+    for i in ds{01..16}; do 
+	hostlist=("${hostlist[@]}" ${i})
+    done
+    for i in titan{01..08}; do
+	hostlist=("${hostlist[@]}" ${i})
+    done
+    return 0
+}
+#=======================================
+# Print_HostAvail()
+#---------------------------------------
+Print_HostAvail() {
+    for ((i=0; i<${#hostlist[@]}; ++i));do
+	printf "%s\n" ${hostlist[i]}
+    done
+}
+#========================================
+# Usage()
+#---------------------------------------
+Usage() {
+    printf "Usage:\n"
+    printf "> %s\n " $cmdbase
+}
+#========================================
+# Check_args()
+#---------------------------------------
+Check_args() {
+    argc_exp=0
+    if [ $argc -ne $argc_exp ]; then
+	Usage
+	exit 1
+    fi
+}
+#
+# main() 
+#
+Check_args;
+Init_HostAvail;
+
+for i in ${hostlist[@]}; do
+    printf "#--- %-7s " $i
+#    ssh -n ${i} "prep -l -f dscudad"
+    ssh -n ${i} "ps aux | grep dscudad" | grep -v -e grep -e emacs -e tee -e ${cmdbase} > $tmpfile
+    if [ -s $tmpfile ]; then
+	printf "\n"
+	cat $tmpfile
+    else
+	echo "(Not found dscudad)"
+    fi
+done
+rm -f $tmpfile
+

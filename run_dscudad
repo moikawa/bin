@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# Define Variables
+readonly cuda_ver=4.2     # CUDA version
+readonly logpath="~/var/dscuda"
+
+cmdbase=${0##*/} # ex.) "run_dscudad"
+logfile=${cmdbase}@$(hostname).$(date +%Y%m%d_%H%M) #ex.)"run_dscudad@ds01.20140530_1924"
+hostlist=()
+hostrun=()
+argc=$#
+argv=()
+for i in $@; do
+    argv=("${argv[@]}" ${i})
+done
+#=======================================
+# Init_HostAvail()
+#---------------------------------------
+Init_HostAvail() {
+    for i in ds{01..16}; do 
+	hostlist=("${hostlist[@]}" ${i})
+    done
+    for i in titan{01..08}; do
+	hostlist=("${hostlist[@]}" ${i})
+    done
+    return 0
+}
+Set_HostToRun() {
+    for i in ${argv[@]}; do
+	for j in ${hostlist[@]}; do
+	    if [ "${i}" = "${j}" ]; then
+		hostrun=("${hostrun[@]}" ${i})
+	    fi
+	done
+    done
+}
+#=======================================
+# Print_HostAvail()
+#---------------------------------------
+Print_HostAvail() {
+    for ((i=0; i<${#hostlist[@]}; ++i));do
+	printf "%s\n" ${hostlist[i]}
+    done
+}
+Print_HostToRun() {
+    printf "hostname to run\n"
+    for ((i=0; i<${#hostrun[@]}; ++i));do
+	printf "   + %s\n" ${hostrun[i]}
+    done
+}
+#=======================================
+# Init_env()
+#---------------------------------------
+Init_env() {
+    export CUDAPATH=/usr/local/cuda-${cuda_ver}
+    export CUDASDKPATH=~/NVIDIA_GPU_Computing_SDK
+    export DSCUDA_PATH=~/dscudapkg
+    export DSCUDA_WARNLEVEL=10
+    export DSCUDA_REMOTECALL="rpc"
+    export LD_LIBRARY_PATH=$DSCUDA_PATH/lib:$CUDAPATH/lib64:$LD_LIBRARY_PATH
+    export PATH=$DSCUDA_PATH/src:$CUDAPATH/bin:$PATH
+    export OMP_NUM_THREADS=16
+}
+Print_env() {
+    printf "(info.) CUDAPATH=%s\n" $CUDAPATH
+    printf "(info.) DSCUDA_PATH=%s\n" $DSCUDA_PATH
+}
+#========================================
+# Usage()
+#---------------------------------------
+Usage() {
+    printf "Usage:\n"
+    printf "> %s [hostname]\n " $cmdbase
+    printf "(examples)\n"
+    printf "   > %s ds01\n" $cmdbase
+    printf "   > %s ds{01,02,04}\n" $cmdbase
+    printf "   > %s ds{01..04}\n" $cmdbase
+}
+#========================================
+# Check_args()
+#---------------------------------------
+Check_args() {
+    argc_exp=1
+    if [ $argc -eq 0 ]; then
+	Usage
+	exit 1
+    else
+	printf "argc=%d\n" $argc
+    fi
+}
+#
+# main() 
+#
+Check_args;
+Init_HostAvail;
+Set_HostToRun;
+#Print_HostAvail;
+#Print_HostToRun;
+
+export DSCUDA_FAULT_INJECTION=${1}
+
+Init_env ${1}
+Print_env;
+printf "logfile: %s/%s\n" ${logpath} ${logfile}
+mkdir -p $logpath
+for i in ${hostrun[@]}; do
+    printf -- "--- %s ---\n" $i
+    printf "%s/src/dscudad > %s/%s 2>&1 &\n" $DSCUDA_PATH $logpath $logfile
+    ssh -n ${i} "$DSCUDA_PATH/src/dscudad > ${logpath}/${logfile} 2>&1 &"
+done
+
+
