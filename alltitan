@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for i in titan{01..08}; do
+    printf "#--------\n"
+    printf "# %s\n" $i
+    printf "#--------\n"
+    ssh $i $@
+done

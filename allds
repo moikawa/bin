@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for i in ds{01..16}; do
+    printf "#--------\n"
+    printf "# %s\n" $i
+    printf "#--------\n"
+    ssh $i $@
+done
